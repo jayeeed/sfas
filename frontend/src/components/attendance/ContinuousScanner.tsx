@@ -71,6 +71,12 @@ export function ContinuousScanner() {
       },
       {
         onSuccess: (response) => {
+          // Filter out "No Face Detected" logs to reduce noise
+          if (response.user_id === 'no_face') {
+            setIsProcessing(false);
+            return;
+          }
+
           const newResult: RecognitionResult = {
             id: crypto.randomUUID(),
             userName: response.user_name,
@@ -281,11 +287,8 @@ export function ContinuousScanner() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">
-                      {result.userName}
-                      {result.empId && <span className="text-muted-foreground text-sm ml-1">({result.empId})</span>}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="font-medium truncate">{result.userName || 'Unknown'}</p>
+                  <p className="text-xs text-muted-foreground truncate">
                       {result.action === 'check_in' ? '✅ Checked In' : '👋 Checked Out'} • {formatTime(result.timestamp)}
                     </p>
                   </div>

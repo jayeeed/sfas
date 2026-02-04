@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { format } from 'date-fns';
 import {
   CheckCircle2,
@@ -5,6 +6,7 @@ import {
   Timer,
   Calendar,
   Camera,
+  Users,
 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,7 +27,17 @@ export default function Dashboard() {
     isRecentLoading,
     stats,
     isStatsLoading,
+    systemStats,
+    isSystemStatsLoading,
+    refetchSystemStats,
   } = useAttendance();
+
+  // Fetch system stats if admin
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      refetchSystemStats();
+    }
+  }, [user?.role, refetchSystemStats]);
 
   const greeting = () => {
     const hour = new Date().getHours();
@@ -60,85 +72,157 @@ export default function Dashboard() {
         </div>
 
         {/* Status Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
-          {/* Check-in Status */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Today's Status</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {isTodayLoading ? (
-                <Skeleton className="h-8 w-24" />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">
-                    {todayStatus?.is_checked_in ? (
-                      <Badge className="bg-green-500 hover:bg-green-600 text-lg px-3 py-1">
-                        Checked In
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-lg px-3 py-1">
-                        Not Yet
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {todayStatus?.is_checked_in ? 'You are marked present' : 'Mark your attendance'}
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+        {user?.role === 'admin' ? (
+          // Admin View - System Overview
+          <div className="grid gap-4 md:grid-cols-3">
+             {/* Present Count */}
+             <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Present Today</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {isSystemStatsLoading ? (
+                  <Skeleton className="h-8 w-24" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {systemStats?.present_today || 0} / {systemStats?.total_employees || 0}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {systemStats?.total_employees ? Math.round((systemStats.present_today / systemStats.total_employees) * 100) : 0}% attendance rate
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Check-in Time */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Check-in Time</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {isTodayLoading ? (
-                <Skeleton className="h-8 w-24" />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">
-                    {formatTime(todayStatus?.check_in_time)}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {todayStatus?.check_out_time
-                      ? `Out: ${formatTime(todayStatus.check_out_time)}`
-                      : 'Not checked out yet'}
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+            {/* On Time / Late */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">On Time vs Late</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {isSystemStatsLoading ? (
+                  <Skeleton className="h-8 w-24" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {systemStats?.on_time_today || 0} <span className="text-muted-foreground text-sm font-normal">on time</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {systemStats?.late_today || 0} late arrivals
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Working Hours */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Working Hours</CardTitle>
-              <Timer className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {isTodayLoading ? (
-                <Skeleton className="h-8 w-24" />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">
-                    {formatWorkingHours(todayStatus?.working_hours)}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {todayStatus?.is_checked_in && !todayStatus?.check_out_time
-                      ? 'Currently working'
-                      : 'Today'}
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+            {/* Avg Check-in */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Avg Check-in</CardTitle>
+                <Timer className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {isSystemStatsLoading ? (
+                  <Skeleton className="h-8 w-24" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {systemStats?.average_check_in_time || '--:--'}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Average arrival time
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          // User View - Personal Stats
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* Check-in Status */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Today's Status</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {isTodayLoading ? (
+                  <Skeleton className="h-8 w-24" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {todayStatus?.is_checked_in ? (
+                        <Badge className="bg-green-500 hover:bg-green-600 text-lg px-3 py-1">
+                          Checked In
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-lg px-3 py-1">
+                          Not Yet
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {todayStatus?.is_checked_in ? 'You are marked present' : 'Mark your attendance'}
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+  
+            {/* Check-in Time */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Check-in Time</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {isTodayLoading ? (
+                  <Skeleton className="h-8 w-24" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {formatTime(todayStatus?.check_in_time)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {todayStatus?.check_out_time
+                        ? `Out: ${formatTime(todayStatus.check_out_time)}`
+                        : 'Not checked out yet'}
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+  
+            {/* Working Hours */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Working Hours</CardTitle>
+                <Timer className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {isTodayLoading ? (
+                  <Skeleton className="h-8 w-24" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {formatWorkingHours(todayStatus?.working_hours)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {todayStatus?.is_checked_in && !todayStatus?.check_out_time
+                        ? 'Currently working'
+                        : 'Today'}
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Quick Action - Only show for Admin */}
         {user?.role === 'admin' && (
@@ -231,22 +315,33 @@ export default function Dashboard() {
                       <div className="flex items-center gap-3">
                         <div
                           className={`h-2 w-2 rounded-full ${
-                            record.type === 'check_in'
-                              ? 'bg-green-500'
-                              : 'bg-orange-500'
+                            record.check_out_time
+                              ? 'bg-orange-500'
+                              : 'bg-green-500'
                           }`}
                         />
                         <div>
                           <p className="text-sm font-medium">
-                            {record.type === 'check_in' ? 'Checked in' : 'Checked out'}
+                            {record.check_out_time ? 'Checked out' : 'Checked in'}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {format(new Date(record.created_at), 'MMM d, h:mm a')}
+                            {(() => {
+                              try {
+                                // Default to check_in_time, fallback to today
+                                const timeStr = record.check_out_time || record.check_in_time;
+                                if (!timeStr) return 'Unknown time';
+                                const date = new Date(timeStr);
+                                if (isNaN(date.getTime())) return 'Invalid time';
+                                return format(date, 'MMM d, h:mm a');
+                              } catch (e) {
+                                return 'Invalid time';
+                              }
+                            })()}
                           </p>
                         </div>
                       </div>
                       <Badge variant="outline" className="text-xs">
-                        {(record.confidence * 100).toFixed(0)}%
+                        {((record.check_out_confidence || record.check_in_confidence) * 100).toFixed(0)}%
                       </Badge>
                     </div>
                   ))}

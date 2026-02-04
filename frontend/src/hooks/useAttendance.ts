@@ -31,6 +31,13 @@ export function useAttendance(params?: AttendanceListParams) {
     queryFn: () => attendanceService.getMyStats(),
   });
 
+  // Get system stats (admin only)
+  const systemStatsQuery = useQuery({
+    queryKey: ['attendance', 'stats', 'system'],
+    queryFn: () => attendanceService.getSystemStats(),
+    enabled: false, // Will be enabled by component if user is admin
+  });
+
   // Mark attendance mutation
   const markAttendanceMutation = useMutation({
     mutationFn: (data: MarkAttendanceRequest) => attendanceService.markAttendance(data),
@@ -76,6 +83,11 @@ export function useAttendance(params?: AttendanceListParams) {
     // Stats
     stats: statsQuery.data,
     isStatsLoading: statsQuery.isLoading,
+
+    // System stats
+    systemStats: systemStatsQuery.data,
+    isSystemStatsLoading: systemStatsQuery.isLoading,
+    refetchSystemStats: systemStatsQuery.refetch,
 
     // Mark attendance
     markAttendance: markAttendanceMutation.mutate,

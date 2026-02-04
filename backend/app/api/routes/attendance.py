@@ -54,6 +54,7 @@ class AttendanceRecord(BaseModel):
     id: str
     user_id: str
     user_name: str
+    emp_id: str | None = None
     date: str
     check_in_time: str
     check_out_time: str | None
@@ -275,6 +276,12 @@ async def mark_attendance(
             detail="User account is disabled",
         )
     
+    # Sort out display names
+    face_details = face_details_map.get(match.face_id, {})
+    caught_emp_id = face_details.get("emp_id")
+    # Face name or fallback to user name if face has no name
+    caught_name = face_details.get("name") or user.name
+
     # Mark attendance
     try:
         attendance, action = await attendance_service.mark_attendance(
@@ -290,11 +297,12 @@ async def mark_attendance(
             detail=str(e),
         )
     
-    # Get details from the matched face
+    
+    # Sort out display names
     face_details = face_details_map.get(match.face_id, {})
-    emp_id = face_details.get("emp_id")
-    # Use face name if available, otherwise fallback to user account name
-    display_name = face_details.get("name") or user.name
+    caught_emp_id = face_details.get("emp_id")
+    # Face name or fallback to user name if face has no name
+    caught_name = face_details.get("name") or user.name
 
     recognition_logger.log_attempt(
         success=True,
@@ -312,8 +320,8 @@ async def mark_attendance(
     return AttendanceMarkResponse(
         success=True,
         user_id=user.id,
-        user_name=display_name,
-        emp_id=emp_id,
+        user_name=caught_name or user.name, # Use variable or fallback
+        emp_id=caught_emp_id,
         action=action,
         confidence=round(match.similarity, 4),
         model_used=request.model,
@@ -351,22 +359,43 @@ async def list_attendance(
         offset=offset,
     )
     
-    # Get user names
+    # Get user names and emp_ids (re-implementing dynamic fetch since migration was reverted)
     user_ids = list(set(a.user_id for a in attendances))
+    user_names = {}
+    user_emp_ids = {}
+    user_face_names = {}
+    
     if user_ids:
+        # Fetch names from User table for fallback
         users_result = await db.execute(
             select(User.id, User.name).where(User.id.in_(user_ids))
         )
         user_names = {row[0]: row[1] for row in users_result.all()}
-    else:
-        user_names = {}
-    
+        
+        # Fetch emp_ids and Face Names from Face table
+        # Note: If a user has multiple faces, this might be ambiguous, 
+        # but typically they belong to the same person.
+        faces_result = await db.execute(
+            select(Face.user_id, Face.name, Face.emp_id).where(
+                Face.user_id.in_(user_ids)
+            )
+        )
+        
+        for row in faces_result.all():
+            # Store the first found face name/emp_id for the user
+            if row.user_id not in user_face_names and row.name:
+                user_face_names[row.user_id] = row.name
+            if row.user_id not in user_emp_ids and row.emp_id:
+                user_emp_ids[row.user_id] = row.emp_id
+
     return AttendanceListResponse(
         items=[
             AttendanceRecord(
                 id=a.id,
                 user_id=a.user_id,
-                user_name=user_names.get(a.user_id, "Unknown"),
+                # Prefer Face Name -> User Name -> "Unknown"
+                user_name=user_face_names.get(a.user_id) or user_names.get(a.user_id, "Unknown"),
+                emp_id=user_emp_ids.get(a.user_id),
                 date=a.attendance_date.isoformat(),
                 check_in_time=a.check_in_time.isoformat(),
                 check_out_time=a.check_out_time.isoformat() if a.check_out_time else None,
@@ -473,3 +502,30 @@ async def get_attendance(
         check_in_model=attendance.check_in_model,
         check_out_model=attendance.check_out_model,
     )
+class SystemOverviewResponse(BaseModel):
+    """System-wide attendance overview."""
+    total_employees: int
+    present_today: int
+    absent_today: int
+    on_time_today: int
+    late_today: int
+    average_check_in_time: str | None
+
+
+@router.get("/stats/overview", response_model=SystemOverviewResponse)
+async def get_system_overview(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[dict, Depends(require_admin)],
+):
+    """
+    Get system-wide attendance overview for today (Admin only).
+    """
+    from ...utils.time_utils import get_current_time_bd
+    today = get_current_time_bd().date()
+    
+    stats = await attendance_service.get_system_stats(
+        db=db,
+        date=today,
+    )
+    
+    return SystemOverviewResponse(**stats)

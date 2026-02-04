@@ -7,6 +7,7 @@ import type {
   MarkAttendanceRequest,
   MarkAttendanceResponse,
   TodayStatus,
+  SystemOverview,
 } from '@/types';
 
 export const attendanceService = {
@@ -45,5 +46,10 @@ export const attendanceService = {
       params: { limit, page: 1 },
     });
     return response.data.items;
+  },
+
+  async getSystemStats(): Promise<SystemOverview> {
+    const response = await api.get<SystemOverview>('/attendance/stats/overview');
+    return response.data;
   },
 };

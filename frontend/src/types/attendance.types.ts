@@ -6,14 +6,17 @@ export type AttendanceStatus = 'in' | 'done' | 'absent';
 export interface AttendanceRecord {
   id: string;
   user_id: string;
-  user_name?: string;
-  check_in?: string;
-  check_out?: string;
-  type: AttendanceType;
-  confidence: number;
-  model: FaceModel;
-  camera_id?: string;
-  created_at: string;
+  user_name: string;
+  emp_id?: string;
+  date: string;
+  check_in_time: string;
+  check_out_time?: string;
+  check_in_confidence: number;
+  check_out_confidence?: number;
+  check_in_source: string;
+  check_out_source?: string;
+  check_in_model: string;
+  check_out_model?: string;
 }
 
 export interface MarkAttendanceRequest {
@@ -64,4 +67,12 @@ export interface TodayStatus {
   check_in_time?: string;
   check_out_time?: string;
   working_hours?: number;
+}
+export interface SystemOverview {
+  total_employees: number;
+  present_today: number;
+  absent_today: number;
+  on_time_today: number;
+  late_today: number;
+  average_check_in_time: string | null;
 }

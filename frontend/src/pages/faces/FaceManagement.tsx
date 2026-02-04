@@ -117,7 +117,7 @@ export default function FaceManagement() {
                 Register Face
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Register New Face</DialogTitle>
                 <DialogDescription>
@@ -125,120 +125,130 @@ export default function FaceManagement() {
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-4">
-                {/* Camera Preview */}
-                <div className="aspect-[4/3] bg-muted rounded-lg overflow-hidden">
-                  {cameraError ? (
-                    <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-                      <XCircle className="h-12 w-12 text-destructive mb-2" />
-                      <p className="text-sm text-destructive">{cameraError}</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => setCameraError(null)}
-                      >
-                        <RefreshCw className="mr-2 h-3 w-3" />
-                        Retry
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <Webcam
-                        ref={webcamRef}
-                        audio={false}
-                        screenshotFormat="image/jpeg"
-                        videoConstraints={videoConstraints}
-                        onUserMediaError={handleCameraError}
-                        mirrored
-                        className="w-full"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-32 h-32 border-2 border-dashed border-primary/50 rounded-full" />
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Left Column: Camera Preview */}
+                <div className="space-y-4">
+                  <div className="aspect-[4/3] bg-muted rounded-lg overflow-hidden relative shadow-inner">
+                    {cameraError ? (
+                      <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+                        <XCircle className="h-12 w-12 text-destructive mb-2" />
+                        <p className="text-sm text-destructive">{cameraError}</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => setCameraError(null)}
+                        >
+                          <RefreshCw className="mr-2 h-3 w-3" />
+                          Retry
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-full flex items-center justify-center bg-black">
+                        <Webcam
+                          ref={webcamRef}
+                          audio={false}
+                          screenshotFormat="image/jpeg"
+                          videoConstraints={videoConstraints}
+                          onUserMediaError={handleCameraError}
+                          mirrored
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="w-48 h-48 border-2 border-dashed border-primary/50 rounded-full" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-xs text-center text-muted-foreground">
+                    <p>Position your face within the circle (even lighting, no glasses)</p>
+                  </div>
+                </div>
+
+                {/* Right Column: Controls */}
+                <div className="flex flex-col justify-between space-y-4">
+                  <div className="space-y-4">
+                    {/* Person Info Fields */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="personName">Person Name</Label>
+                        <Input
+                          id="personName"
+                          placeholder="John Doe"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="personId">Person ID</Label>
+                        <Input
+                          id="personId"
+                          placeholder="EMP001"
+                          value={empId}
+                          onChange={(e) => setEmpId(e.target.value)}
+                        />
                       </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Person Info Fields */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="personName">Person Name</Label>
-                    <Input
-                      id="personName"
-                      placeholder="John Doe"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="personId">Person ID</Label>
-                    <Input
-                      id="personId"
-                      placeholder="EMP001"
-                      value={empId}
-                      onChange={(e) => setEmpId(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Model Selection */}
-                <div className="space-y-3">
-                  <Label>Select Recognition Model</Label>
-                  <RadioGroup
-                    value={selectedModel}
-                    onValueChange={(value) => setSelectedModel(value as FaceModel)}
-                  >
-                    {FACE_MODELS.map((model) => (
-                      <div
-                        key={model.id}
-                        className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer"
+                    {/* Model Selection */}
+                    <div className="space-y-2">
+                       <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Recognition Model
+                      </Label>
+                      <RadioGroup
+                        value={selectedModel}
+                        onValueChange={(value) => setSelectedModel(value as FaceModel)}
+                        className="grid gap-2"
                       >
-                        <RadioGroupItem value={model.id} id={model.id} />
-                        <Label htmlFor={model.id} className="flex-1 cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{model.name}</span>
-                            {model.recommended && (
-                              <Badge variant="secondary" className="text-xs">
-                                Recommended
-                              </Badge>
-                            )}
+                        {FACE_MODELS.map((model) => (
+                          <div
+                            key={model.id}
+                            className={`flex items-start space-x-3 p-2.5 rounded-md border text-sm cursor-pointer transition-colors ${
+                              selectedModel === model.id 
+                                ? 'bg-primary/5 border-primary' 
+                                : 'hover:bg-muted/50'
+                            }`}
+                          >
+                            <RadioGroupItem value={model.id} id={model.id} className="mt-0.5" />
+                            <Label htmlFor={model.id} className="grid gap-0.5 cursor-pointer w-full">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium">{model.name}</span>
+                                {model.recommended && (
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 h-4">
+                                    Recommended
+                                  </Badge>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground line-clamp-1">
+                                {model.description}
+                              </span>
+                            </Label>
                           </div>
-                          <p className="text-sm text-muted-foreground">{model.description}</p>
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
+                  </div>
 
-                {/* Tips */}
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <p className="font-medium">Tips:</p>
-                  <ul className="list-disc list-inside">
-                    <li>Look directly at the camera</li>
-                    <li>Ensure even lighting on your face</li>
-                    <li>Remove glasses if possible</li>
-                  </ul>
+                  {/* Action Button */}
+                  <Button
+                    className="w-full mt-4"
+                    size="lg"
+                    onClick={handleRegister}
+                    disabled={isRegistering || !!cameraError || !name.trim() || !empId.trim()}
+                  >
+                    {isRegistering ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Registering...
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="mr-2 h-4 w-4" />
+                        Capture & Register
+                      </>
+                    )}
+                  </Button>
                 </div>
-
-                {/* Action Button */}
-                <Button
-                  className="w-full"
-                  onClick={handleRegister}
-                  disabled={isRegistering || !!cameraError || !name.trim() || !empId.trim()}
-                >
-                  {isRegistering ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Registering...
-                    </>
-                  ) : (
-                    <>
-                      <Camera className="mr-2 h-4 w-4" />
-                      Capture & Register
-                    </>
-                  )}
-                </Button>
               </div>
             </DialogContent>
           </Dialog>

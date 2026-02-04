@@ -58,7 +58,13 @@ export default function AttendanceHistory() {
 
   const formatTime = (isoString?: string) => {
     if (!isoString) return '--:--';
-    return format(new Date(isoString), 'h:mm a');
+    try {
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) return 'Invalid';
+      return format(date, 'h:mm a');
+    } catch (e) {
+      return 'Invalid';
+    }
   };
 
   const formatHours = (hours?: number) => {
@@ -79,19 +85,31 @@ export default function AttendanceHistory() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Check In', 'Check Out', 'Hours', 'Status'];
-    const rows = records.map((record) => [
-      format(new Date(record.created_at), 'yyyy-MM-dd'),
-      record.check_in ? formatTime(record.check_in) : '-',
-      record.check_out ? formatTime(record.check_out) : '-',
-      formatHours(
-        record.check_in && record.check_out
-          ? (new Date(record.check_out).getTime() - new Date(record.check_in).getTime()) /
-              (1000 * 60 * 60)
-          : 0
-      ),
-      record.check_out ? 'Done' : record.check_in ? 'In' : 'Absent',
-    ]);
+    const headers = ['Date', 'Name', 'Emp ID', 'Check In', 'Check Out', 'Hours', 'Status'];
+    const rows = records.map((record) => {
+      let dateStr = '-';
+      try {
+        const d = record.date || record.check_in_time;
+        if (d && !isNaN(new Date(d).getTime())) {
+          dateStr = format(new Date(d), 'yyyy-MM-dd');
+        }
+      } catch (e) {}
+
+      return [
+        dateStr,
+        record.user_name || 'Unknown',
+        record.emp_id || '-',
+        record.check_in_time ? formatTime(record.check_in_time) : '-',
+        record.check_out_time ? formatTime(record.check_out_time) : '-',
+        formatHours(
+          record.check_in_time && record.check_out_time
+            ? (new Date(record.check_out_time).getTime() - new Date(record.check_in_time).getTime()) /
+                (1000 * 60 * 60)
+            : 0
+        ),
+        record.check_out_time ? 'Done' : record.check_in_time ? 'In' : 'Absent',
+      ];
+    });
 
     const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -202,6 +220,8 @@ export default function AttendanceHistory() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Emp ID</TableHead>
                   <TableHead>Check In</TableHead>
                   <TableHead>Check Out</TableHead>
                   <TableHead>Hours</TableHead>
@@ -213,6 +233,8 @@ export default function AttendanceHistory() {
                   [...Array(5)].map((_, i) => (
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
@@ -221,28 +243,46 @@ export default function AttendanceHistory() {
                   ))
                 ) : records.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       No attendance records found
                     </TableCell>
                   </TableRow>
                 ) : (
                   records.map((record) => {
                     const hours =
-                      record.check_in && record.check_out
-                        ? (new Date(record.check_out).getTime() -
-                            new Date(record.check_in).getTime()) /
+                      record.check_in_time && record.check_out_time
+                        ? (new Date(record.check_out_time).getTime() -
+                            new Date(record.check_in_time).getTime()) /
                           (1000 * 60 * 60)
                         : undefined;
                     return (
                       <TableRow key={record.id}>
                         <TableCell className="font-medium">
-                          {format(new Date(record.created_at), 'MMM d, yyyy')}
+                          {(() => {
+                            try {
+                              const dateStr = record.date || record.check_in_time;
+                              if (!dateStr) return 'Unknown Date';
+                              const date = new Date(dateStr);
+                              if (isNaN(date.getTime())) return 'Invalid Date';
+                              return format(date, 'MMM d, yyyy');
+                            } catch (e) {
+                              return 'Invalid Date';
+                            }
+                          })()}
                         </TableCell>
-                        <TableCell>{formatTime(record.check_in)}</TableCell>
-                        <TableCell>{formatTime(record.check_out)}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{record.user_name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {record.emp_id || '-'}
+                        </TableCell>
+                        <TableCell>{formatTime(record.check_in_time)}</TableCell>
+                        <TableCell>{formatTime(record.check_out_time)}</TableCell>
                         <TableCell>{formatHours(hours)}</TableCell>
                         <TableCell>
-                          {getStatusBadge(record.check_in, record.check_out)}
+                          {getStatusBadge(record.check_in_time, record.check_out_time)}
                         </TableCell>
                       </TableRow>
                     );
