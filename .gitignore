@@ -1,0 +1,5 @@
+.venv/
+*.pyc
+backend/models/
+backend/storage/face_images/
+frontend/.env
