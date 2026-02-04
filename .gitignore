@@ -3,3 +3,4 @@
 backend/models/
 backend/storage/face_images/
 frontend/.env
+backend/.env
